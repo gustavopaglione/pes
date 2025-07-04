@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Expositor | BioControl</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Estilos originales */
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        .scanner-line {
+            position: absolute;
+            height: 3px;
+            width: 100%;
+            background: rgba(59, 130, 246, 0.7);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+            animation: scan 2s linear infinite;
+        }
+        .face-camera {
+            border-radius: 8px;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header original -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-fingerprint text-3xl"></i>
+                    <h1 class="text-2xl font-bold">BioControl</h1>
+                </div>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="/" class="hover:text-blue-200 transition"><i class="fas fa-home mr-1"></i> Inicio</a>
+                    <a href="/lista_expositores" class="hover:text-blue-200 transition"><i class="fas fa-users mr-1"></i> Expositores</a>
+                    <a href="#" class="hover:text-blue-200 transition"><i class="fas fa-chart-bar mr-1"></i> Reportes</a>
+                    <a href="#" class="hover:text-blue-200 transition"><i class="fas fa-cog mr-1"></i> Configuración</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <i class="fas fa-bell text-xl cursor-pointer hover:text-blue-200"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
+                    </div>
+                    <div class="flex items-center space-x-2 cursor-pointer">
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-8 h-8 rounded-full border-2 border-white">
+                        <span class="hidden md:inline">Admin</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Contenido principal - Formulario de registro -->
+        <main class="flex-grow container mx-auto px-4 py-8">
+            <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-user-plus text-blue-500 mr-2"></i> Registro de Nuevo Expositor
+                </h2>
+                
+                <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                    <!-- Campos del formulario -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre*</label>
+                            <input type="text" id="nombre" name="nombre" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                            <input type="email" id="email" name="email" required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="empresa" class="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                        <input type="text" id="empresa" name="empresa"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <!-- Captura de foto -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Captura de Rostro*</label>
+                        <div class="face-camera bg-gray-100 p-4 rounded-lg">
+                            <div class="flex flex-col items-center">
+                                <video id="video" width="320" height="240" autoplay class="mb-4 rounded-lg"></video>
+                                <div class="flex space-x-4">
+                                    <button type="button" id="capture" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+                                        <i class="fas fa-camera mr-2"></i> Capturar Foto
+                                    </button>
+                                    <button type="button" id="retake" 
+                                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center hidden">
+                                        <i class="fas fa-redo mr-2"></i> Volver a Tomar
+                                    </button>
+                                </div>
+                                <canvas id="canvas" width="320" height="240" class="hidden mt-4 rounded-lg border border-gray-300"></canvas>
+                                <input type="hidden" id="foto" name="foto">
+                                <p id="captureStatus" class="text-sm text-gray-500 mt-2">Presione "Capturar Foto" para tomar su imagen</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button type="submit" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm flex items-center justify-center">
+                            <i class="fas fa-save mr-2"></i> Registrar Expositor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <!-- Footer original -->
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-4 md:mb-0">
+                        <p class="text-sm">&copy; 2025 PES. Todos los derechos reservados.</p>
+                    </div>
+                    <div class="flex space-x-6">
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- JavaScript para la cámara (actualizado) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const captureBtn = document.getElementById('capture');
+            const retakeBtn = document.getElementById('retake');
+            const fotoInput = document.getElementById('foto');
+            const statusText = document.getElementById('captureStatus');
+            
+            // Acceder a la cámara
+            if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }, 
+                    audio: false 
+                }).then(function(stream) {
+                    video.srcObject = stream;
+                }).catch(function(error) {
+                    statusText.textContent = "Error al acceder a la cámara: " + error.message;
+                    statusText.classList.add('text-red-500');
+                    console.error("Error al acceder a la cámara: ", error);
+                });
+            } else {
+                statusText.textContent = "Tu navegador no soporta el acceso a la cámara";
+                statusText.classList.add('text-red-500');
+            }
+            
+            // Capturar imagen
+            captureBtn.addEventListener('click', function() {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Mostrar la imagen capturada
+                canvas.classList.remove('hidden');
+                fotoInput.value = canvas.toDataURL('image/jpeg');
+                
+                // Cambiar estado
+                statusText.textContent = "Foto capturada correctamente";
+                statusText.classList.remove('text-red-500');
+                statusText.classList.add('text-green-500');
+                
+                // Mostrar botón de volver a tomar
+                captureBtn.classList.add('hidden');
+                retakeBtn.classList.remove('hidden');
+            });
+            
+            // Volver a tomar foto
+            retakeBtn.addEventListener('click', function() {
+                canvas.classList.add('hidden');
+                fotoInput.value = '';
+                
+                // Restaurar estado
+                statusText.textContent = "Presione 'Capturar Foto' para tomar su imagen";
+                statusText.classList.remove('text-green-500', 'text-red-500');
+                
+                // Mostrar botón de captura
+                captureBtn.classList.remove('hidden');
+                retakeBtn.classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
+

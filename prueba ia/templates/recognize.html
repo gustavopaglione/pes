@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reconocimiento Biométrico</title>
+    <script src="{{ url_for('static', filename='js/camaraAutomatica.js') }}"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex items-center justify-center">
+
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
+
+        <!-- LOGO PES -->
+        <div class="mb-4 flex justify-center">
+            <img src="{{ url_for('static', filename='images/logo_pes.png') }}" alt="Logo PES" class="h-24">
+        </div>
+        <!-- ALERTA POPUP -->
+        <div id="popup-message" class="hidden fixed top-5 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 shadow-lg rounded px-6 py-4 z-50 text-center text-gray-900 font-semibold">
+        </div>
+
+
+        <h1 class="text-2xl font-bold mb-4">Reconocimiento Facial</h1>
+
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-4">
+                <video id="video" width="320" height="240" autoplay muted></video>
+                <canvas id="canvas" width="320" height="240" class="hidden"></canvas>
+            </div>
+
+            <input type="hidden" id="foto" name="foto">
+
+            <div class="flex flex-col gap-4">
+                <button type="button" id="capture" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
+                    <i class="fas fa-camera mr-2"></i> Capturar rostro
+                </button>                
+
+                <button type="button" id="verify" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">
+                    <i class="fas fa-check mr-2"></i> Verificar identidad
+                </button>
+
+                <a href="{{ url_for('register') }}" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded inline-block">
+                    <i class="fas fa-user-plus mr-2"></i> Registrarse
+                </a>
+
+                <!-- NUEVO: Botón Ingreso al Sistema -->
+                <a href="{{ url_for('index') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded inline-block">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Ingreso al sistema
+                </a>
+            </div>
+        </form>
+
+        <div id="result" class="mt-4 text-sm text-gray-600"></div>
+
+<script>
+document.getElementById("capture").addEventListener("click", function () {
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
+    const resultDiv = document.getElementById("result");
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(function (blob) {
+        if (!blob) {
+            resultDiv.innerHTML = `<div class="text-red-600">❌ Error al capturar imagen</div>`;
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("foto", blob, "rostro.jpg");
+
+        fetch("/recognize", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.acceso) {
+                resultDiv.innerHTML = `<div class="text-green-600">✅ Bienvenido ${data.nombre} de ${data.empresa}</div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="text-red-600">⚠️ ${data.error || data.mensaje || "No se reconoció el rostro."}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            resultDiv.innerHTML = `<div class="text-red-600">⚠️ Error en el reconocimiento.</div>`;
+        });
+    }, 'image/jpeg');
+});
+</script>
+
+
+</body>
+</html>
+

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Biométrico | Control de Acceso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/biometric.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Animación para el escáner de huella */
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        
+        .scanner-line {
+            position: absolute;
+            height: 3px;
+            width: 100%;
+            background: rgba(59, 130, 246, 0.7);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+            animation: scan 2s linear infinite;
+        }
+        
+        /* Estilo para la cámara de reconocimiento facial */
+        .face-camera {
+            border-radius: 50%;
+            border: 3px solid #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* Efecto de pulso para indicar estado */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-fingerprint text-3xl"></i>
+                    <h1 class="text-2xl font-bold">BioControl</h1>
+                </div>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#" class="hover:text-blue-200 transition"><i class="fas fa-home mr-1"></i> Inicio</a>
+                    <a href="{{ url_for('lista_expositores') }}" class="hover:text-blue-200 transition">
+                        <i class="fas fa-users mr-1"></i> Expositores
+                    </a>
+                    <a href="#" class="hover:text-blue-200 transition"><i class="fas fa-chart-bar mr-1"></i> Reportes</a>
+                    <a href="#" class="hover:text-blue-200 transition"><i class="fas fa-cog mr-1"></i> Configuración</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <i class="fas fa-bell text-xl cursor-pointer hover:text-blue-200"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
+                    </div>
+                    <div class="flex items-center space-x-2 cursor-pointer">
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-8 h-8 rounded-full border-2 border-white">
+                        <span class="hidden md:inline">Admin</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Panel izquierdo - Registro biométrico -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-fingerprint mr-2 text-blue-500"></i> Registro Biométrico
+                        </h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Lector de huella digital -->
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 relative overflow-hidden">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-medium text-gray-700">Huella Digital</h3>
+                                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Activo</span>
+                                </div>
+                                <div class="relative h-48 w-full bg-gray-200 rounded-lg flex items-center justify-center">
+                                    <div class="scanner-line"></div>
+                                    <i class="fas fa-fingerprint text-5xl text-gray-400"></i>
+                                </div>
+                                <div class="mt-4 flex justify-center">
+                                    <button id="scanFingerprint" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                        <i class="fas fa-play mr-2"></i> Iniciar Escaneo
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Reconocimiento facial -->
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="font-medium text-gray-700">Reconocimiento Facial</h3>
+                                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Activo</span>
+                                </div>
+                                <div id="faceCameraContainer" class="face-camera h-48 w-full bg-gray-200 rounded-lg flex items-center justify-center mx-auto overflow-hidden relative">
+                                        <i class="fas fa-user text-5xl text-gray-400 mb-2"></i>
+                                        <p class="text-sm text-gray-500">Posiciona tu rostro frente a la cámara</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-center">
+                                    <button id="scanFace" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                        <i class="fas fa-camera mr-2"></i> Capturar Rostro
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Resultados del escaneo -->
+                        <div id="scanResults" class="mt-6 hidden">
+                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-check-circle text-blue-500 text-xl"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h3 class="text-sm font-medium text-blue-800">Escaneo completado con éxito</h3>
+                                        <div class="mt-2 text-sm text-blue-700">
+                                            <p>Los datos biométricos han sido registrados correctamente.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Registro de usuario -->
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-user-plus mr-2 text-blue-500"></i> Información del Usuario
+                        </h2><!-- En tu index.html, actualiza el formulario así: -->
+                        <form id="userForm" action="{{ url_for('registrar_desde_index') }}" method="POST" enctype="multipart/form-data">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="firstName" class="block text-sm font-medium text-gray-700">Nombre</label>
+                                    <input type="text" id="firstName" name="firstName" required
+                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label for="lastName" class="block text-sm font-medium text-gray-700">Apellido</label>
+                                    <input type="text" id="lastName" name="lastName" required
+                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                            
+                            <!-- Añade un campo oculto para la imagen biométrica -->
+                            <input type="hidden" id="biometricData" name="biometricData">
+                            
+                            <div class="mt-4">
+                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md shadow-sm flex items-center justify-center transition">
+                                    <i class="fas fa-save mr-2"></i> Guardar Registro
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Panel derecho - Registros recientes y estadísticas -->
+                <div class="space-y-6">
+                    <!-- Tarjeta de estado -->
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-chart-pie mr-2 text-blue-500"></i> Estado del Sistema
+                        </h2>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="p-2 rounded-full bg-blue-100 text-blue-600">
+                                        <i class="fas fa-fingerprint"></i>
+                                    </div>
+                                    <span class="ml-3 text-gray-600">Lector de huellas</span>
+                                </div>
+                                <span class="text-green-600 font-medium">Conectado</span>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="p-2 rounded-full bg-blue-100 text-blue-600">
+                                        <i class="fas fa-camera"></i>
+                                    </div>
+                                    <span class="ml-3 text-gray-600">Cámara facial</span>
+                                </div>
+                                <span class="text-green-600 font-medium">Conectado</span>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="p-2 rounded-full bg-blue-100 text-blue-600">
+                                        <i class="fas fa-database"></i>
+                                    </div>
+                                    <span class="ml-3 text-gray-600">Base de datos</span>
+                                </div>
+                                <span class="text-green-600 font-medium">Sincronizada</span>
+                            </div>
+                            
+                            <div class="pt-4 mt-4 border-t border-gray-200">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Usuarios registrados</span>
+                                    <span class="font-bold text-blue-600">1,248</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: 85%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Registros recientes -->
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-history mr-2 text-blue-500"></i> Accesos Recientes
+                        </h2>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" class="w-10 h-10 rounded-full border-2 border-white shadow">
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">María González</p>
+                                    <p class="text-xs text-gray-500">Ingreso - 08:45 AM</p>
+                                    <div class="mt-1 flex items-center">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i> Verificado
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-10 h-10 rounded-full border-2 border-white shadow">
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">Carlos Mendoza</p>
+                                    <p class="text-xs text-gray-500">Salida - 12:30 PM</p>
+                                    <div class="mt-1 flex items-center">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i> Verificado
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="User" class="w-10 h-10 rounded-full border-2 border-white shadow">
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">Ana Ramírez</p>
+                                    <p class="text-xs text-gray-500">Ingreso - 01:15 PM</p>
+                                    <div class="mt-1 flex items-center">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i> Advertencia
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-4 mt-4 border-t border-gray-200 text-center">
+                                <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-500 transition">
+                                    <i class="fas fa-list mr-1"></i> Ver todos los registros
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Notificaciones -->
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-bell mr-2 text-blue-500"></i> Alertas
+                        </h2>
+                        
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 pt-0.5">
+                                    <div class="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
+                                        <i class="fas fa-exclamation text-red-500"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">Intento de acceso no autorizado</p>
+                                    <p class="text-xs text-gray-500">Hace 15 minutos</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 pt-0.5">
+                                    <div class="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                                        <i class="fas fa-clock text-yellow-500"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">Registro biométrico incompleto</p>
+                                    <p class="text-xs text-gray-500">Hace 1 hora</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 pt-0.5">
+                                    <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                        <i class="fas fa-info text-blue-500"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">Actualización del sistema disponible</p>
+                                    <p class="text-xs text-gray-500">Hoy, 09:00 AM</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-4 md:mb-0">
+                        <p class="text-sm">&copy; 2023 BioControl. Todos los derechos reservados.</p>
+                    </div>
+                    <div class="flex space-x-6">
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="text-gray-300 hover:text-white transition"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div id="confirmationModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="fas fa-check-circle text-blue-600"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modalTitle">Registro exitoso</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">Los datos biométricos y la información del usuario han sido registrados correctamente en el sistema.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="confirmButton" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Aceptar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulación del escaneo de huella digital
+        document.getElementById('scanFingerprint').addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Escaneando...';
+            this.classList.add('cursor-not-allowed', 'opacity-75');
+            
+            // Simular proceso de escaneo
+            setTimeout(() => {
+                this.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Huella registrada';
+                this.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                this.classList.add('bg-green-600', 'hover:bg-green-700');
+                
+                // Mostrar resultados
+                document.getElementById('scanResults').classList.remove('hidden');
+                
+                // Agregar pulso al icono de huella
+                const fingerprintIcon = document.querySelector('.fa-fingerprint');
+                fingerprintIcon.classList.remove('text-gray-400');
+                fingerprintIcon.classList.add('text-blue-500', 'pulse');
+                
+            }, 3000);
+        });
+        
+        // Simulación del reconocimiento facial
+        document.getElementById('scanFace').addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Capturando...';
+            this.classList.add('cursor-not-allowed', 'opacity-75');
+            
+            // Cambiar la vista de la cámara para simular captura
+            const camera = document.querySelector('.face-camera');
+            camera.innerHTML = '<div class="w-full h-full bg-blue-500 bg-opacity-20 flex items-center justify-center"><i class="fas fa-user-check text-4xl text-blue-600"></i></div>';
+            
+            // Simular proceso de reconocimiento
+            setTimeout(() => {
+                this.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Rostro registrado';
+                this.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                this.classList.add('bg-green-600', 'hover:bg-green-700');
+                
+                // Mostrar resultados si no están ya visibles
+                document.getElementById('scanResults').classList.remove('hidden');
+                
+            }, 2500);
+        });
+        
+        // Manejo del formulario
+        document.getElementById('userForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validar campos
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const idNumber = document.getElementById('idNumber').value;
+            
+            if (!firstName || !lastName || !idNumber) {
+                alert('Por favor complete todos los campos obligatorios');
+                return;
+            }
+            
+            // Mostrar modal de confirmación
+            document.getElementById('confirmationModal').classList.remove('hidden');
+        });
+        
+        // Cerrar modal
+        document.getElementById('confirmButton').addEventListener('click', function() {
+            document.getElementById('confirmationModal').classList.add('hidden');
+            
+            // Resetear formulario
+            document.getElementById('userForm').reset();
+            
+            // Resetear botones de escaneo
+            const scanButtons = document.querySelectorAll('#scanFingerprint, #scanFace');
+            scanButtons.forEach(button => {
+                button.innerHTML = button.id === 'scanFingerprint' 
+                    ? '<i class="fas fa-play mr-2"></i> Iniciar Escaneo' 
+                    : '<i class="fas fa-camera mr-2"></i> Capturar Rostro';
+                button.classList.remove('cursor-not-allowed', 'opacity-75', 'bg-green-600', 'hover:bg-green-700');
+                button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            });
+            
+            // Resetear vista de cámara
+            const camera = document.querySelector('.face-camera');
+            camera.innerHTML = '<div class="text-center"><i class="fas fa-user text-5xl text-gray-400 mb-2"></i><p class="text-sm text-gray-500">Posiciona tu rostro frente a la cámara</p></div>';
+            
+            // Ocultar resultados
+            document.getElementById('scanResults').classList.add('hidden');
+            
+            // Resetear icono de huella
+            const fingerprintIcon = document.querySelector('.fa-fingerprint');
+            fingerprintIcon.classList.remove('text-blue-500', 'pulse');
+            fingerprintIcon.classList.add('text-gray-400');
+        });
+    </script>
+    <script>
+        try {
+            src="{{ url_for('static', filename='js/biometric.js') }}"
+        } catch (e) {
+            console.error('Error en JS:', e);
+        }
+        </script>
+    <video id="videoElement" class="hidden"></video>
+</body>
+</html>
+
