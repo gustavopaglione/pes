@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><title>Logs de Accesos</title></head>
+<body>
+  <h2>Registros de Acceso</h2>
+  <table border="1">
+    <tr>
+      <th>ID</th><th>Persona</th><th>Fecha/Hora</th><th>Resultado</th><th>Dispositivo</th>
+    </tr>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.id }}</td>
+      <td>{{ log.persona_id }}</td>
+      <td>{{ log.fecha_hora }}</td>
+      <td>{{ log.resultado }}</td>
+      <td>{{ log.dispositivo }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

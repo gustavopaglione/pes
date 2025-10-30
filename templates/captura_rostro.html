@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Captura de Rostro - {{ nombre }}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+    }
+    h1 { color: #333; }
+    video, img {
+      border: 3px solid #333;
+      border-radius: 10px;
+      margin: 15px auto;
+      width: 480px;
+      height: 360px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Captura de Rostro - {{ nombre }}</h1>
+  <p>Colocate frente a la cámara y presioná “Capturar Rostro” para guardar la imagen.</p>
+
+  <!-- Video en vivo -->
+  <video id="video" autoplay></video>
+
+  <!-- Imagen capturada -->
+  <img id="preview" style="display:none;">
+
+  <div>
+    <button id="capture">Capturar Rostro</button>
+    <button id="save" style="display:none;">Guardar Rostro</button>
+  </div>
+
+  <a href="{{ url_for('index') }}">Volver al inicio</a>
+
+  <script>
+    const video = document.getElementById('video');
+    const preview = document.getElementById('preview');
+    const captureBtn = document.getElementById('capture');
+    const saveBtn = document.getElementById('save');
+
+    // Acceso a la cámara
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        alert('Error al acceder a la cámara: ' + err);
+      });
+
+    // Captura del rostro
+    captureBtn.addEventListener('click', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataURL = canvas.toDataURL('image/jpeg');
+      
+      preview.src = dataURL;
+      preview.style.display = 'block';
+      saveBtn.style.display = 'inline-block';
+
+      // Guardar el Base64 en el botón para enviarlo luego
+      saveBtn.dataset.image = dataURL;
+    });
+
+    // Enviar imagen al servidor
+    saveBtn.addEventListener('click', () => {
+      const imgData = saveBtn.dataset.image;
+
+      fetch('/captura_rostro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imgData })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+      })
+      .catch(err => {
+        alert('Error al guardar: ' + err);
+      });
+    });
+  </script>
+
+</body>
+</html>

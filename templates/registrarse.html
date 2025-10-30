@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>Registrar Feriantes</title></head>
+<body>
+    <h1>Registrar Feriantes</h1>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <form method="POST">
+        Nombre: <input type="text" name="nombre" required><br>
+        Teléfono: <input type="text" name="telefono" required><br>
+        Rubro: <input type="text" name="rubro" required><br>
+        <input type="submit" value="Siguiente: Capturar Rostro">
+    </form>
+    <a href="{{ url_for('index') }}">Volver</a>
+</body>
+</html>
